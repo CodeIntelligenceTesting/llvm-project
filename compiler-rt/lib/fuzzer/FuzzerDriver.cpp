@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <iostream>
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
@@ -296,6 +297,16 @@ int RunOneTest(Fuzzer *F, const char *InputFilePath, size_t MaxLen) {
     U.resize(MaxLen);
   F->ExecuteCallback(U.data(), U.size());
   F->TryDetectingAMemoryLeak(U.data(), U.size(), true);
+  return 0;
+}
+
+int RunOneTestOracle(Fuzzer *F, const char *InputFilePath, size_t MaxLen) {
+  Unit U = FileToVector(InputFilePath);
+  if (MaxLen && MaxLen < U.size())
+    U.resize(MaxLen);
+  F->RunOne(U.data(), U.size());
+  F->PrintOracleStats();
+  std::cout << std::flush;
   return 0;
 }
 
@@ -661,6 +672,7 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
   Options.UseValueProfile = Flags.use_value_profile;
   Options.Shrink = Flags.shrink;
   Options.ReduceInputs = Flags.reduce_inputs;
+  Options.Oracle = Flags.oracle;
   Options.ShuffleAtStartUp = Flags.shuffle;
   Options.PreferSmall = Flags.prefer_small;
   Options.ReloadIntervalSec = Flags.reload;
@@ -784,6 +796,25 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
 
   if (Flags.cleanse_crash)
     return CleanseCrashInput(Args, Options);
+
+  if (Flags.oracle) {
+    Options.SaveArtifacts = false;
+    int Runs = 1;
+    Printf("%s: Running %zd inputs %d time(s) each.\n", ProgName->c_str(),
+           Inputs->size(), Runs);
+    size_t Input = 0;
+    for (auto &Path : *Inputs) {
+      Input++;
+      Printf("#%zd INITIAL (%s)", Input, Path.c_str());
+      RunOneTestOracle(F, Path.c_str(), Options.MaxLen);
+    }
+    for (std::string Path; std::getline(std::cin, Path);) {
+      Input++;
+      Printf("#%zd ORACLE (%s)", Input, Path.c_str());
+      RunOneTestOracle(F, Path.c_str(), Options.MaxLen);
+    }
+    exit(0);
+  }
 
   if (RunIndividualFiles) {
     Options.SaveArtifacts = false;
