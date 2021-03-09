@@ -320,6 +320,20 @@ void Fuzzer::RssLimitCallback() {
   _Exit(Options.OOMExitCode); // Stop right now.
 }
 
+void Fuzzer::PrintOracleStats() {
+  static size_t OldCoverage = 0;
+  static size_t OldFeatures = 0;
+  if (size_t N = TPC.GetTotalPCCoverage()) {
+    Printf(" cov: %zd new_cov: %zd", N, N - OldCoverage);
+    OldCoverage = N;
+  }
+  if (size_t N = Corpus.NumFeatures()) {
+    Printf(" ft: %zd new_ft: %zd", N, N - OldFeatures);
+    OldFeatures = N;
+  }
+  Printf("\n");
+}
+
 void Fuzzer::PrintStats(const char *Where, const char *End, size_t Units,
                         size_t Features) {
   size_t ExecPerSec = execPerSec();
