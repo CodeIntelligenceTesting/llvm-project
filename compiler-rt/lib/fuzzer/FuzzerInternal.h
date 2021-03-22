@@ -86,7 +86,7 @@ public:
   void HandleMalloc(size_t Size);
   static void MaybeExitGracefully();
   std::string WriteToOutputCorpus(const Unit &U);
-  void PrintOracleStats();
+  std::string PrintOracleStats();
 
 private:
   void AlarmCallback();
