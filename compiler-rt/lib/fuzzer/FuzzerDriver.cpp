@@ -847,8 +847,7 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
     sockaddr_un Address;
     Sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (Sockfd == -1) {
-      std::cout << "Error" << std::endl;
-
+      std::cout << "could not create unix socket" << std::endl;
       exit(1);
     }
 
@@ -857,7 +856,7 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
 
     // connect to socket
     if (connect(Sockfd, (sockaddr *)&Address, sizeof(Address)) == -1) {
-      std::cout << "Error" << std::endl;
+      std::cout << "could not connect to '/tmp/socket'" << std::endl;
       close(Sockfd);
       exit(1);
     }
