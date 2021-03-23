@@ -531,6 +531,24 @@ void Merge(Fuzzer *F, FuzzingOptions &Options, const Vector<std::string> &Args,
   exit(0);
 }
 
+bool readFromSocket(int sockfd,std::string &Path) {
+  int n;
+  const size_t buflen = 200;
+  char ret_value[buflen + 1];
+  Path = "";
+  do {
+    n = read(sockfd, ret_value, buflen);
+    if (n < 0) {
+      std::cout << 'socket read failed' << std::endl;
+      exit(1);
+    } else {
+      Path.append(ret_value);
+    }
+  } while (n > 0);
+  std::cout << Path << std::endl;
+  return true;
+}
+
 int AnalyzeDictionary(Fuzzer *F, const Vector<Unit> &Dict, UnitVector &Corpus) {
   Printf("Started dictionary minimization (up to %d tests)\n",
          Dict.size() * Corpus.size() * 2);
@@ -824,34 +842,35 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
     size_t Input = 0;
   https: // stackoverflow.com/a/37714620/13310191
 
-    int sockfd;
-    int len;
-    sockaddr_un address;
-    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (sockfd == -1) {
+    // create socket
+    int Sockfd;
+    sockaddr_un Address;
+    Sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (Sockfd == -1) {
       std::cout << "Error" << std::endl;
 
       exit(1);
     }
 
-    address.sun_family = AF_UNIX;
-    strcpy(address.sun_path, "/tmp/socket");
+    Address.sun_family = AF_UNIX;
+    strcpy(Address.sun_path, "/tmp/socket");
 
-    if (connect(sockfd, (sockaddr *)&address, sizeof(address)) == -1) {
+    // connect to socket
+    if (connect(Sockfd, (sockaddr *)&Address, sizeof(Address)) == -1) {
       std::cout << "Error" << std::endl;
-      close(sockfd);
+      close(Sockfd);
       exit(1);
     }
 
     for (auto &Path : *Inputs) {
       Input++;
       Printf("#%zd INITIAL (%s)", Input, Path.c_str());
-      RunOneTestOracle(F, Path.c_str(), Options.MaxLen, sockfd);
+      RunOneTestOracle(F, Path.c_str(), Options.MaxLen, Sockfd);
     }
-    for (std::string Path; std::getline(std::cin, Path);) {
+    for (std::string Path; readFromSocket(Sockfd,Path);) {
       Input++;
       Printf("#%zd ORACLE (%s)", Input, Path.c_str());
-      RunOneTestOracle(F, Path.c_str(), Options.MaxLen, sockfd);
+      RunOneTestOracle(F, Path.c_str(), Options.MaxLen, Sockfd);
     }
     exit(0);
   }
