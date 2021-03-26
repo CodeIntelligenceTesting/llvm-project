@@ -8,4 +8,6 @@ wait
 rm -f libFuzzer.a
 ar ru libFuzzer.a Fuzzer*.o
 rm -f Fuzzer*.o
+$CXX -fsanitize=fuzzer -g -O2 target.cc -c
+$CXX++ libFuzzer.a target.o -lpthread -o target
 
