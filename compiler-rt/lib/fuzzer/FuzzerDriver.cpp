@@ -539,7 +539,7 @@ bool readFromSocket(int sockfd,std::string &Path) {
   do {
     n = read(sockfd, ret_value, buflen);
     if (n < 0) {
-      std::cout << 'socket read failed' << std::endl;
+      std::cout << "socket read failed" << std::endl;
       exit(1);
     } else {
       Path.append(ret_value);
