@@ -854,9 +854,9 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
     Address.sun_family = AF_UNIX;
     strcpy(Address.sun_path, "/tmp/socket");
 
-    // connect to socket
-    if (connect(Sockfd, (sockaddr *)&Address, sizeof(Address)) == -1) {
-      std::cout << "could not connect to '/tmp/socket'" << std::endl;
+    // bind on socket
+    if (bind(Sockfd, (sockaddr *)&Address, sizeof(Address)) == -1) {
+      std::cout << "could not bind to '/tmp/socket'" << std::endl;
       close(Sockfd);
       exit(1);
     }
