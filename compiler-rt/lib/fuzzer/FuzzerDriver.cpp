@@ -19,23 +19,16 @@
 #include "FuzzerPlatform.h"
 #include "FuzzerRandom.h"
 #include "FuzzerTracePC.h"
+#include "Socket.h"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <csignal>
 #include <cstdlib>
 #include <cstring>
-#include <fstream>
-#include <iostream>
 #include <mutex>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <string>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/un.h>
 #include <thread>
-#include <unistd.h>
 
 // This function should be present in the libFuzzer so that the client
 // binary can test for its existence.
@@ -345,17 +338,12 @@ int RunOneTest(Fuzzer *F, const char *InputFilePath, size_t MaxLen) {
 }
 
 int RunOneTestOracle(Fuzzer *F, const char *InputFilePath, size_t MaxLen,
-                     int sockfd) {
+                     string &Out) {
   Unit U = FileToVector(InputFilePath);
   if (MaxLen && MaxLen < U.size())
     U.resize(MaxLen);
   F->RunOne(U.data(), U.size());
-  std::string Out = F->PrintOracleStats();
-  if (write(sockfd, Out.c_str(), Out.size()) == -1) {
-    std::cout << "Error" << std::endl;
-    close(sockfd);
-    exit(1);
-  }
+  Out = F->PrintOracleStats();
   return 0;
 }
 
@@ -562,24 +550,6 @@ void Merge(Fuzzer *F, FuzzingOptions &Options, const Vector<std::string> &Args,
   exit(0);
 }
 
-bool readFromSocket(int sockfd,std::string &Path) {
-  int n;
-  const size_t buflen = 200;
-  char ret_value[buflen + 1];
-  Path = "";
-  do {
-    n = read(sockfd, ret_value, buflen);
-    if (n < 0) {
-      std::cout << "socket read failed" << std::endl;
-      exit(1);
-    } else {
-      Path.append(ret_value);
-    }
-  } while (n > 0);
-  std::cout << Path << std::endl;
-  return true;
-}
-
 int AnalyzeDictionary(Fuzzer *F, const Vector<Unit> &Dict, UnitVector &Corpus) {
   Printf("Started dictionary minimization (up to %d tests)\n",
          Dict.size() * Corpus.size() * 2);
@@ -683,6 +653,7 @@ ReadCorpora(const Vector<std::string> &CorpusDirs,
       SizedFiles.push_back({File, Size});
   return SizedFiles;
 }
+
 
 int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
   using namespace fuzzer;
@@ -899,38 +870,23 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
     Printf("%s: Running %zd inputs %d time(s) each.\n", ProgName->c_str(),
            Inputs->size(), Runs);
     size_t Input = 0;
-  https: // stackoverflow.com/a/37714620/13310191
 
-    // create socket
-    int Sockfd;
-    sockaddr_un Address;
-    Sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (Sockfd == -1) {
-      std::cout << "could not create unix socket" << std::endl;
-      exit(1);
-    }
+    Socket* Sock = new Socket("/tmp/libfuzzer.sock");
+    string Result;
 
-    Address.sun_family = AF_UNIX;
-    strcpy(Address.sun_path, "/tmp/socket");
-
-    // bind on socket
-    if (bind(Sockfd, (sockaddr *)&Address, sizeof(Address)) == -1) {
-      std::cout << "could not bind to '/tmp/socket'" << std::endl;
-      close(Sockfd);
-      exit(1);
-    }
-
-    for (auto &Path : *Inputs) {
+    for (auto &FilePath : *Inputs) {
       Input++;
-      Printf("#%zd INITIAL (%s)", Input, Path.c_str());
-      RunOneTestOracle(F, Path.c_str(), Options.MaxLen, Sockfd);
+      Printf("#%zd INITIAL (%s)", Input, FilePath.c_str());
+      RunOneTestOracle(F, FilePath.c_str(), Options.MaxLen, Result);
+      Sock->write(Result);
     }
-    for (std::string Path; readFromSocket(Sockfd,Path);) {
+    for (std::string FilePath; Sock->read(FilePath);) {
       Input++;
-      Printf("#%zd ORACLE (%s)", Input, Path.c_str());
-      RunOneTestOracle(F, Path.c_str(), Options.MaxLen, Sockfd);
+      Printf("#%zd ORACLE (%s)", Input, FilePath.c_str());
+      RunOneTestOracle(F, FilePath.c_str(), Options.MaxLen, Result);
+      Sock->write(Result);
     }
-    exit(0);
+    exit(EXIT_SUCCESS);
   }
 
   if (RunIndividualFiles) {
