@@ -6,8 +6,7 @@ for f in $LIBFUZZER_SRC_DIR/*.cpp; do
 done
 wait
 rm -f libFuzzer.a
-ar ru libFuzzer.a Fuzzer*.o
-rm -f Fuzzer*.o
+ar ru libFuzzer.a *.o
+rm -f *.o
 $CXX -fsanitize=fuzzer -g -O2 target.cc -c
 $CXX++ libFuzzer.a target.o -lpthread -o target
-
