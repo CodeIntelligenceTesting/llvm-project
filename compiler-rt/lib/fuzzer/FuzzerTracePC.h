@@ -100,7 +100,7 @@ class TracePC {
   void IterateCoveredFunctions(CallBack CB);
 
   void AddValueForMemcmp(void *caller_pc, const void *s1, const void *s2,
-                         size_t n, bool StopAtZero);
+                         size_t Len1, size_t Len2, bool StopAtZero);
 
   TableOfRecentCompares<uint32_t, 32> TORC4;
   TableOfRecentCompares<uint64_t, 32> TORC8;
