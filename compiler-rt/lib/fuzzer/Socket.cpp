@@ -17,8 +17,8 @@ Socket::Socket(const char *SockPath) {
 
   // create socket
   sockaddr_un Address;
-  Sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
-  SocketPath =SockPath;
+  Sockfd = socket(AF_UNIX, SOCK_DGRAM, 0);
+  SocketPath = SockPath;
   if (Sockfd == -1) {
     std::cerr << "could not create unix socket" << std::endl;
     exit(EXIT_FAILURE);
@@ -38,34 +38,33 @@ Socket::Socket(const char *SockPath) {
   /* Prepare for accepting connections. The backlog size is set
    * to 20. So while one request is being processed other requests
    * can be waiting. */
-  if (listen(Sockfd, 20) == -1) {
+  /*if (listen(Sockfd, 20) == -1) {
     std::cerr << "could not listen to '" << SocketPath << "'" << std::endl;
     exit(EXIT_FAILURE);
-  }
-
-  if (accept(Sockfd, NULL, NULL) == -1) {
-    std::cerr << "could not accept connection to '" << SocketPath << "'"
-              << std::endl;
-    exit(EXIT_FAILURE);
-  }
+  }*/
+  /*
+    if (accept(Sockfd, NULL, NULL) == -1) {
+      std::cerr << "could not accept connection to '" << SocketPath << "'"
+                << std::endl;
+      exit(EXIT_FAILURE);
+    }*/
 }
 
 bool Socket::read(string &Out) {
   int N;
-  const size_t Buflen = 200;
+  const size_t Buflen = 200000;
   char RetValue[Buflen + 1];
   Out = "";
-
-  do {
-    N = ::read(Sockfd, RetValue, Buflen);
-    if (N < 0) {
-      std::cout << "socket read failed" << std::endl;
-      exit(EXIT_FAILURE);
-    } else {
-      Out.append(RetValue);
-    }
-  } while (N > 0);
-  std::cout << Out << std::endl;
+  std::cout << "Start reading" << std::endl;
+  N = ::read(Sockfd, RetValue, Buflen);
+  if (N < 0) {
+    std::cout << "socket read failed" << std::endl;
+    exit(EXIT_FAILURE);
+  } else {
+    RetValue[N] = 0;
+    Out.append(RetValue);
+    std::cout << Out << std::endl;
+  }
   return Out == "done";
 }
 
@@ -77,6 +76,4 @@ bool Socket::write(string Data) {
   }
   return true;
 }
-Socket::~Socket() {
-  unlink(SocketPath);
-}
+Socket::~Socket() { unlink(SocketPath); }
