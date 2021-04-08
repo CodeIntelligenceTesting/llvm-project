@@ -121,7 +121,7 @@ public:
   DictionaryEntry MakeDictionaryEntryFromCMP(const void *Arg1, const void *Arg2,
                                              const void *Arg1Mutation,
                                              const void *Arg2Mutation,
-                                             size_t ArgSize,
+                                             size_t Arg1Size, size_t Arg2Size,
                                              const uint8_t *Data, size_t Size);
 
   Random &Rand;

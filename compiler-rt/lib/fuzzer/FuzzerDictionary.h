@@ -48,15 +48,23 @@ private:
 
 typedef FixedWord<64> Word;
 
+struct PositionHint {
+  size_t Idx;
+  size_t Size;
+};
+
 class DictionaryEntry {
  public:
   DictionaryEntry() {}
   DictionaryEntry(Word W) : W(W) {}
-  DictionaryEntry(Word W, size_t PositionHint) : W(W), PositionHint(PositionHint) {}
+  DictionaryEntry(Word W, PositionHint PositionHint)
+      : W(W), PositionHint(PositionHint) {}
   const Word &GetW() const { return W; }
 
-  bool HasPositionHint() const { return PositionHint != std::numeric_limits<size_t>::max(); }
-  size_t GetPositionHint() const {
+  bool HasPositionHint() const {
+    return PositionHint.Idx != std::numeric_limits<size_t>::max();
+  }
+  PositionHint GetPositionHint() const {
     assert(HasPositionHint());
     return PositionHint;
   }
@@ -68,13 +76,14 @@ class DictionaryEntry {
   void Print(const char *PrintAfter = "\n") {
     PrintASCII(W.data(), W.size());
     if (HasPositionHint())
-      Printf("@%zd", GetPositionHint());
+      Printf("@%zd-%zd", GetPositionHint().Idx,
+             GetPositionHint().Idx + GetPositionHint().Size);
     Printf("%s", PrintAfter);
   }
 
 private:
   Word W;
-  size_t PositionHint = std::numeric_limits<size_t>::max();
+  PositionHint PositionHint = {std::numeric_limits<size_t>::max(), 0};
   size_t UseCount = 0;
   size_t SuccessCount = 0;
 };
