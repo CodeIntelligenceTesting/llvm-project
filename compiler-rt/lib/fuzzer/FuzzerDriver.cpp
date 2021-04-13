@@ -337,9 +337,8 @@ int RunOneTest(Fuzzer *F, const char *InputFilePath, size_t MaxLen) {
   return 0;
 }
 
-int RunOneTestOracle(Fuzzer *F, const char *InputFilePath, size_t MaxLen,
-                     string &Out) {
-  Unit U = FileToVector(InputFilePath);
+int RunOneTestOracle(Fuzzer *F, string Input, size_t MaxLen, string &Out) {
+  Unit U(Input.begin(), Input.end());
   if (MaxLen && MaxLen < U.size())
     U.resize(MaxLen);
   F->RunOne(U.data(), U.size());
@@ -654,7 +653,6 @@ ReadCorpora(const Vector<std::string> &CorpusDirs,
   return SizedFiles;
 }
 
-
 int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
   using namespace fuzzer;
   assert(argc && argv && "Argument pointers cannot be nullptr");
@@ -869,21 +867,15 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
     int Runs = 1;
     Printf("%s: Running %zd inputs %d time(s) each.\n", ProgName->c_str(),
            Inputs->size(), Runs);
-    size_t Input = 0;
+    size_t I = 0;
 
-    Socket* Sock = new Socket("/tmp/libfuzzer.sock");
+    Socket *Sock = new Socket("/tmp/libfuzzer.sock");
     string Result;
 
-    for (auto &FilePath : *Inputs) {
-      Input++;
-      Printf("#%zd INITIAL (%s)", Input, FilePath.c_str());
-      RunOneTestOracle(F, FilePath.c_str(), Options.MaxLen, Result);
-      Sock->write(Result);
-    }
-    for (std::string FilePath; Sock->read(FilePath);) {
-      Input++;
-      Printf("#%zd ORACLE (%s)", Input, FilePath.c_str());
-      RunOneTestOracle(F, FilePath.c_str(), Options.MaxLen, Result);
+    for (std::string Input; Sock->read(Input);) {
+      I++;
+      Printf("#%zd ORACLE (%s)", I, Input.c_str());
+      RunOneTestOracle(F, Input.c_str(), Options.MaxLen, Result);
       Sock->write(Result);
     }
     exit(EXIT_SUCCESS);

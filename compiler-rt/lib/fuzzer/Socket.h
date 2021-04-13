@@ -13,10 +13,12 @@ public:
   Socket(const char *Path);
   bool read(string &Out);
   bool write(string Data);
+  bool close();
   ~ Socket();
 
 private:
   int Sockfd;
+  int Conn;
   const char* SocketPath;
 };
 
