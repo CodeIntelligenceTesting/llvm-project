@@ -66,7 +66,6 @@ bool Socket::read(string &Out) {
 
   int N;
   char RetValue[Len.Integer];
-  std::cout << "Start reading" << std::endl;
   N = ::recv(Conn, RetValue, Len.Integer, 0);
   if (N < 0) {
     std::cout << "socket read failed" << std::endl;
@@ -74,7 +73,6 @@ bool Socket::read(string &Out) {
   }
 
   Out = RetValue;
-  std::cout << Out << std::endl;
   return true;
 }
 
