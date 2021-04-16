@@ -138,8 +138,8 @@ void Fuzzer::HandleMalloc(size_t Size) {
 Fuzzer::Fuzzer(UserCallback CB, InputCorpus &Corpus, MutationDispatcher &MD,
                FuzzingOptions Options)
     : CB(CB), Corpus(Corpus), MD(MD), Options(Options) {
-  if (EF->__sanitizer_set_death_callback)
-    EF->__sanitizer_set_death_callback(StaticDeathCallback);
+  if (EF->__jazzer_set_death_callback)
+    EF->__jazzer_set_death_callback(StaticDeathCallback);
   assert(!F);
   F = this;
   TPC.ResetMaps();
