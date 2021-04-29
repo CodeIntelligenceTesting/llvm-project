@@ -17,6 +17,7 @@
 
 #include <set>
 #include <unordered_map>
+#include <string>
 
 namespace fuzzer {
 
@@ -127,6 +128,8 @@ class TracePC {
   const PCTableEntry *PCTableEntryByIdx(uintptr_t Idx);
   static uintptr_t GetNextInstructionPc(uintptr_t PC);
   bool PcIsFuncEntry(const PCTableEntry *TE) { return TE->PCFlags & 1; }
+
+  std::string GetCoverageCounters();
 
 private:
   bool UseCounters = false;
