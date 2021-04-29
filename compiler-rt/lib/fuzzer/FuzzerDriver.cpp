@@ -805,9 +805,7 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
 
   if (Flags.oracle) {
     Options.SaveArtifacts = false;
-    int Runs = 1;
-    Printf("%s: Running %zd inputs %d time(s) each.\n", ProgName->c_str(),
-           Inputs->size(), Runs);
+    Printf("%s: Running inputs from /tmp/libfuzzer.sock\n", ProgName->c_str());
     size_t I = 0;
 
     Socket *Sock = new Socket("/tmp/libfuzzer.sock");
