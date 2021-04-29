@@ -45,6 +45,21 @@ size_t TracePC::GetTotalPCCoverage() {
   return ObservedPCs.size();
 }
 
+std::string TracePC::GetCoverageCounters() {
+  std::string out;
+  out.resize(NumInline8bitCounters);
+  size_t pos = 0;
+  IterateCounterRegions([&pos, &out](const Module::Region &R) {
+    if (R.Enabled) {
+      size_t RegionSize = R.Stop - R.Start;
+      memcpy(&out[pos], R.Start, RegionSize);
+      pos += RegionSize;
+    }
+  });
+  assert(pos == out.size());
+  return out;
+}
+
 
 void TracePC::HandleInline8bitCountersInit(uint8_t *Start, uint8_t *Stop) {
   if (Start == Stop) return;
