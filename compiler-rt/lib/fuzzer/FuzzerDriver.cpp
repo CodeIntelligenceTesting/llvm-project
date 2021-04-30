@@ -874,7 +874,7 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
       I++;
       Printf("#%zd ORACLE (%s)", I, Input.c_str());
       RunOneTestOracle(F, Input.c_str(), Options.MaxLen, Result);
-      Sock->write(Result);
+      //Sock->write(Result);
       Sock->write(TPC.GetCoverageCounters());
     }
     exit(EXIT_SUCCESS);
