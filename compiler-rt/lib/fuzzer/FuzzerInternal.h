@@ -35,8 +35,8 @@ public:
   Fuzzer(UserCallback CB, InputCorpus &Corpus, MutationDispatcher &MD,
          FuzzingOptions Options);
   ~Fuzzer();
-  void Loop(Vector<SizedFile> &CorporaFiles);
-  void ReadAndExecuteSeedCorpora(Vector<SizedFile> &CorporaFiles);
+  std::vector<std::string> Loop(Vector<SizedFile> &CorporaFiles);
+  std::vector<std::string> ReadAndExecuteSeedCorpora(Vector<SizedFile> &CorporaFiles);
   void MinimizeCrashLoop(const Unit &U);
   void RereadOutputCorpus(size_t MaxSize);
 
@@ -94,7 +94,7 @@ private:
   void ExitCallback();
   void CrashOnOverwrittenData();
   void InterruptCallback();
-  void MutateAndTestOne();
+  std::vector<std::string> MutateAndTestOne();
   void PurgeAllocator();
   void ReportNewCoverage(InputInfo *II, const Unit &U);
   void PrintPulseAndReportSlowInput(const uint8_t *Data, size_t Size);

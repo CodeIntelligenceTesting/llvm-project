@@ -10,6 +10,7 @@
 
 #include "FuzzerCommand.h"
 #include "FuzzerCorpus.h"
+#include "FuzzerDefs.h"
 #include "FuzzerFork.h"
 #include "FuzzerIO.h"
 #include "FuzzerInterface.h"
@@ -23,13 +24,15 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
-#include <csignal>
+#include <cstddef>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
 #include <string>
 #include <thread>
-
+// basic file operations
+#include <fstream>
 // This function should be present in the libFuzzer so that the client
 // binary can test for its existence.
 #if LIBFUZZER_MSVC
@@ -314,6 +317,16 @@ int RunOneTestOracle(Fuzzer *F, string Input, size_t MaxLen, string &Out) {
   Out = F->PrintOracleStats();
   return 0;
 }
+
+//int MutateAndRunOneTestOracle(Fuzzer *F, string Input, size_t MaxLen,
+//                              string &Out) {
+//  Unit U(Input.begin(), Input.end());
+//  if (MaxLen && MaxLen < U.size())
+//    U.resize(MaxLen);
+//  F->MutateAndTestOne(U.data(), U.size());
+//  Out = F->PrintOracleStats();
+//  return 0;
+//}
 
 static bool AllInputsAreFiles() {
   if (Inputs->empty())
@@ -804,20 +817,35 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
     return CleanseCrashInput(Args, Options);
 
   if (Flags.oracle) {
-    Options.SaveArtifacts = false;
-    Printf("%s: Running inputs from /tmp/libfuzzer.sock\n", ProgName->c_str());
-    size_t I = 0;
-
-    Socket *Sock = new Socket("/tmp/libfuzzer.sock");
     string Result;
+    string Input;
+    std::ofstream Myfile;
+    std::string FileName = std::tmpnam(nullptr);
+    Options.SaveArtifacts = false;
 
-    for (std::string Input; Sock->read(Input);) {
-      I++;
-      Printf("#%zd ORACLE (%s)", I, Input.c_str());
-      RunOneTestOracle(F, Input.c_str(), Options.MaxLen, Result);
-      //Sock->write(Result);
-      Sock->write(TPC.GetCoverageCounters());
+    Printf("%s: Running inputs from /tmp/libfuzzer.sock\n", ProgName->c_str());
+    Socket *Sock = new Socket("/tmp/libfuzzer.sock");
+    // infinite reading from socket
+    for (dataOut Out; Sock->read(&Out);) {
+      delete F;
+      // totalNumberofRuns gets incremented by ExecuteCallback 2 times, so need to add 2 here!
+      Options.MaxNumberOfRuns = Out.mutRep + 2;
+      auto *F = new Fuzzer(Callback, *Corpus, *MD, Options);
+      Input = Out.fileContents;
+      Printf("#ORACLE (%s)", Input.c_str());
+
+      // write to file
+      Myfile.open(FileName);
+      Myfile << Input.c_str();
+      Myfile.close();
+
+      auto CorporaFiles = ReadCorpora({}, {FileName});
+
+      std::vector<std::string> NewCoverages = F->Loop(CorporaFiles);
+      // Printf("newCoverages: %d\n", NewCoverages.size());
+      Sock->write(NewCoverages);
     }
+    std::remove(FileName.c_str());
     exit(EXIT_SUCCESS);
   }
 
