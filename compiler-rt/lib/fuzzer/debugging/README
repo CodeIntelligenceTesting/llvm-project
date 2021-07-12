@@ -1,0 +1,7 @@
+run build
+
+start debugger
+ target -oracle=1 -fork=1
+ 
+start python socket client
+ python socket_test --role client --addr /tmp/libfuzzer.sock

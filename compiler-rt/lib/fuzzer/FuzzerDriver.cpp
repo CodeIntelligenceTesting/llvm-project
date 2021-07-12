@@ -315,6 +315,16 @@ int RunOneTestOracle(Fuzzer *F, string Input, size_t MaxLen, string &Out) {
   return 0;
 }
 
+//int MutateAndRunOneTestOracle(Fuzzer *F, string Input, size_t MaxLen,
+//                              string &Out) {
+//  Unit U(Input.begin(), Input.end());
+//  if (MaxLen && MaxLen < U.size())
+//    U.resize(MaxLen);
+//  F->MutateAndTestOne(U.data(), U.size());
+//  Out = F->PrintOracleStats();
+//  return 0;
+//}
+
 static bool AllInputsAreFiles() {
   if (Inputs->empty())
     return false;
@@ -810,14 +820,60 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
 
     Socket *Sock = new Socket("/tmp/libfuzzer.sock");
     string Result;
+    string Input;
 
-    for (std::string Input; Sock->read(Input);) {
-      I++;
-      Printf("#%zd ORACLE (%s)", I, Input.c_str());
-      RunOneTestOracle(F, Input.c_str(), Options.MaxLen, Result);
-      //Sock->write(Result);
-      Sock->write(TPC.GetCoverageCounters());
-    }
+    Sock->read(Input);
+    I++;
+    Printf("#%zd ORACLE (%s)", I, Input.c_str());
+    RunOneTestOracle(F, Input.c_str(), Options.MaxLen, Result);
+    // Sock->write(Result);
+    Sock->write(TPC.GetCoverageCounters());
+
+
+//        for (int i = 0; i < 10; ++i) {
+//
+//      // mutate buffer
+//      NewSize = MD.Mutate(CurrentUnitData, Size, CurrentMaxMutationLen);
+//
+//
+//      size_t CurrentMaxMutationLen =
+//          Min(MaxMutationLen, Max(U.size(), TmpMaxMutationLen));
+//      assert(CurrentMaxMutationLen > 0);
+//
+//      for (int i = 0; i < Options.MutateDepth; i++) {
+//        if (TotalNumberOfRuns >= Options.MaxNumberOfRuns)
+//          break;
+//        size_t NewSize = 0;
+//        if (II.HasFocusFunction && !II.DataFlowTraceForFocusFunction.empty() &&
+//            Size <= CurrentMaxMutationLen)
+//          NewSize = MD.MutateWithMask(CurrentUnitData, Size, Size,
+//                                      II.DataFlowTraceForFocusFunction);
+//
+//        // If MutateWithMask either failed or wasn't called, call default
+//        // Mutate.
+//        if (!NewSize)
+//          NewSize = MD.Mutate(CurrentUnitData, Size, CurrentMaxMutationLen);
+//        assert(NewSize > 0 && "Mutator returned empty unit");
+//        assert(NewSize <= CurrentMaxMutationLen &&
+//               "Mutator return oversized unit");
+//        Size = NewSize;
+//        II.NumExecutedMutations++;
+//        Corpus.IncrementNumExecutedMutations();
+//
+//        bool FoundUniqFeatures = false;
+//        bool NewCov = RunOne(CurrentUnitData, Size, /*MayDeleteFile=*/true, &II,
+//                             &FoundUniqFeatures);
+//        TryDetectingAMemoryLeak(CurrentUnitData, Size,
+//                                /*DuringInitialCorpusExecution*/ false);
+//        if (NewCov) {
+//          ReportNewCoverage(&II, {CurrentUnitData, CurrentUnitData + Size});
+//          break; // We will mutate this input more in the next rounds.
+//        }
+//        if (Options.ReduceDepth && !FoundUniqFeatures)
+//          break;
+//      }
+//    }
+
     exit(EXIT_SUCCESS);
   }
 
