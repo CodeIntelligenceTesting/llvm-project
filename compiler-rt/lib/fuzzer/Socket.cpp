@@ -3,6 +3,7 @@
 //
 
 #include "Socket.h"
+#include <cstddef>
 #include <cstdlib>
 #include <iostream>
 #include <sys/socket.h>
@@ -54,10 +55,6 @@ Socket::Socket(const char *SockPath) {
 }
 
 bool Socket::read(dataOut *Out) {
-  typedef union {
-    unsigned int Integer;
-    unsigned char Byte[4];
-  } int_asbytes;
   int_asbytes Len;
   int_asbytes MutRep;
 
@@ -83,21 +80,26 @@ bool Socket::read(dataOut *Out) {
   return true;
 }
 
-bool Socket::write(string Data) {
-  union {
-    unsigned int Integer;
-    unsigned char Byte[4];
-  } Len;
-
+bool Socket::write(std::vector<std::string> Data) {
+  int_asbytes Len;
   Len.Integer = Data.size();
   if (::write(Conn, Len.Byte, 4) == -1) {
     std::cout << "Error" << std::endl;
     exit(EXIT_FAILURE);
   }
-  if (::write(Conn, Data.c_str(), Data.size()) == -1) {
-    std::cout << "Error" << std::endl;
-    exit(EXIT_FAILURE);
+  for(auto Data : Data){
+    Len.Integer = Data.size();
+    if (::write(Conn, Len.Byte, 4) == -1) {
+      std::cout << "Error" << std::endl;
+      exit(EXIT_FAILURE);
+    }
+
+    if (::write(Conn, Data.c_str(), Data.size()) == -1) {
+      std::cout << "Error" << std::endl;
+      exit(EXIT_FAILURE);
+    }
   }
+  
   return true;
 }
 

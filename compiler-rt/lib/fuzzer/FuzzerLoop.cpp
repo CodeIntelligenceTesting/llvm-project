@@ -9,6 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "FuzzerCorpus.h"
+#include "FuzzerDefs.h"
 #include "FuzzerIO.h"
 #include "FuzzerInternal.h"
 #include "FuzzerMutate.h"
@@ -21,6 +22,7 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <vector>
 
 #if defined(__has_include)
 #if __has_include(<sanitizer / lsan_interface.h>)
@@ -682,7 +684,7 @@ void Fuzzer::TryDetectingAMemoryLeak(const uint8_t *Data, size_t Size,
   }
 }
 
-void Fuzzer::MutateAndTestOne() {
+std::vector<std::string> Fuzzer::MutateAndTestOne() {
   MD.StartMutationSequence();
 
   auto &II = Corpus.ChooseUnitToMutate(MD.GetRand());
@@ -700,7 +702,7 @@ void Fuzzer::MutateAndTestOne() {
   size_t CurrentMaxMutationLen =
       Min(MaxMutationLen, Max(U.size(), TmpMaxMutationLen));
   assert(CurrentMaxMutationLen > 0);
-
+  std::vector<std::string> coverageCounters;
   for (int i = 0; i < Options.MutateDepth; i++) {
     if (TotalNumberOfRuns >= Options.MaxNumberOfRuns)
       break;
@@ -723,6 +725,7 @@ void Fuzzer::MutateAndTestOne() {
     bool FoundUniqFeatures = false;
     bool NewCov = RunOne(CurrentUnitData, Size, /*MayDeleteFile=*/true, &II,
                          &FoundUniqFeatures);
+    coverageCounters.push_back(TPC.GetCoverageCounters());
     TryDetectingAMemoryLeak(CurrentUnitData, Size,
                             /*DuringInitialCorpusExecution*/ false);
     if (NewCov) {
@@ -734,6 +737,7 @@ void Fuzzer::MutateAndTestOne() {
   }
 
   II.NeedsEnergyUpdate = true;
+  return coverageCounters;
 }
 
 void Fuzzer::PurgeAllocator() {
@@ -814,7 +818,7 @@ void Fuzzer::ReadAndExecuteSeedCorpora(Vector<SizedFile> &CorporaFiles) {
   }
 }
 
-void Fuzzer::Loop(Vector<SizedFile> &CorporaFiles) {
+std::vector<std::string> Fuzzer::Loop(Vector<SizedFile> &CorporaFiles) {
   auto FocusFunctionOrAuto = Options.FocusFunction;
   DFT.Init(Options.DataFlowTrace, &FocusFunctionOrAuto, CorporaFiles,
            MD.GetRand());
@@ -827,7 +831,7 @@ void Fuzzer::Loop(Vector<SizedFile> &CorporaFiles) {
 
   TmpMaxMutationLen =
       Min(MaxMutationLen, Max(size_t(4), Corpus.MaxInputSize()));
-
+  std::vector<std::string> allCoverages;
   while (true) {
     auto Now = system_clock::now();
     if (!Options.StopFile.empty() &&
@@ -857,13 +861,16 @@ void Fuzzer::Loop(Vector<SizedFile> &CorporaFiles) {
     }
 
     // Perform several mutations and runs.
-    MutateAndTestOne();
+    std::vector<std::string> NewCoverages = MutateAndTestOne();
+    std::copy(NewCoverages.begin(), NewCoverages.end(), std::back_inserter(allCoverages));
 
     PurgeAllocator();
   }
 
   PrintStats("DONE  ", "\n");
   MD.PrintRecommendedDictionary();
+
+  return allCoverages;
 }
 
 void Fuzzer::MinimizeCrashLoop(const Unit &U) {

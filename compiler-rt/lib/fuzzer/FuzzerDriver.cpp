@@ -827,27 +827,29 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
 
     Socket *Sock = new Socket("/tmp/libfuzzer.sock");
     string Result;
-    dataOut Out;
-    Sock->read(&Out);
-    I++;
-    string Input = Out.fileContents;
-    Options.MaxNumberOfRuns = Out.mutRep;
-    Printf("#%zd ORACLE (%s)", I, Input.c_str());
+    string Input;
+    for (dataOut Out; Sock->read(&Out);) {
+      I++;
+      Input = Out.fileContents;
+      Options.MaxNumberOfRuns = Out.mutRep + 2;
+      Printf("#%zd ORACLE (%s)", I, Input.c_str());
 
-    RunOneTestOracle(F, Input.c_str(), Options.MaxLen, Result);
+      // write to file @aakash TODO: delete created file
+      std::ofstream myfile;
+      std::string fileName= "temp1.txt";
+      myfile.open(fileName);
+      myfile << Input.c_str();
+      myfile.close();
 
-    // write to file @aakash TODO: delete created file
-    std::ofstream myfile;
-    std::string fileName= "temp1.txt";
-    myfile.open(fileName);
-    myfile << Input.c_str();
-    myfile.close();
+      auto CorporaFiles = ReadCorpora({}, {fileName});
+      Printf("aakash2: %d\n",CorporaFiles.size());
 
-    auto CorporaFiles = ReadCorpora({}, {fileName});
-    Printf("aakash2: %d\n",CorporaFiles.size());
-    F->Loop(CorporaFiles);
-    // Sock->write(Result);
-    Sock->write(TPC.GetCoverageCounters());
+      std::vector<std::string> NewCoverages = F->Loop(CorporaFiles);
+      Printf("newCoverages: %d\n", NewCoverages.size());
+      // Sock->write(Result);
+      Sock->write(NewCoverages);
+    }
+    
 
     exit(EXIT_SUCCESS);
   }

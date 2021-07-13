@@ -43,9 +43,13 @@ def main(role='server', addr='/tmp/test.sock'):
                 sock.sendall(pack('I', 2))
                 sock.sendall(pack('I', len(input_)) + input_)
                 print('SENT>> ' + str(input_))
-                len_ = unpack('I', sock.recv(4))[0]
-                result = sock.recv(len_)
-                print('RECV>> ' + str(result))
+                num_covs = unpack('I', sock.recv(4))[0]
+                print('NumConvs: ', num_covs)
+                for i in range(num_covs):
+                    len_ = unpack('I', sock.recv(4))[0]
+                    result = sock.recv(len_)
+                    print('RECV>> ' + str(result))
+                
 
 
 if __name__ == '__main__':
