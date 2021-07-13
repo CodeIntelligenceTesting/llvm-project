@@ -53,26 +53,33 @@ Socket::Socket(const char *SockPath) {
   std::cout << "Client established connection";
 }
 
-bool Socket::read(string &Out) {
-  union {
+bool Socket::read(dataOut *Out) {
+  typedef union {
     unsigned int Integer;
     unsigned char Byte[4];
-  } Len;
+  } int_asbytes;
+  int_asbytes Len;
+  int_asbytes MutRep;
+
+  // recieve number of mutation repititions
+  ::recv(Conn, MutRep.Byte, 4, 0);
+  Out->mutRep = MutRep.Integer;
+
   // recieve length of the upcomming msg
   ::recv(Conn, Len.Byte, 4, 0);
   if (Len.Integer == 0) {
     return false;
   }
-
   int N;
   char RetValue[Len.Integer];
+  // now reading file contents
   N = ::recv(Conn, RetValue, Len.Integer, 0);
   if (N < 0) {
     std::cout << "socket read failed" << std::endl;
     exit(EXIT_FAILURE);
   }
 
-  Out = RetValue;
+  Out->fileContents = RetValue;
   return true;
 }
 

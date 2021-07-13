@@ -10,6 +10,7 @@
 
 #include "FuzzerCommand.h"
 #include "FuzzerCorpus.h"
+#include "FuzzerDefs.h"
 #include "FuzzerFork.h"
 #include "FuzzerIO.h"
 #include "FuzzerInterface.h"
@@ -22,13 +23,19 @@
 #include "Socket.h"
 #include <algorithm>
 #include <atomic>
+#include <bits/c++config.h>
 #include <chrono>
 #include <csignal>
+#include <cstddef>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
 #include <string>
 #include <thread>
+// basic file operations @aakash
+#include <iostream>
+#include <fstream>
 
 // This function should be present in the libFuzzer so that the client
 // binary can test for its existence.
@@ -820,59 +827,27 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
 
     Socket *Sock = new Socket("/tmp/libfuzzer.sock");
     string Result;
-    string Input;
-
-    Sock->read(Input);
+    dataOut Out;
+    Sock->read(&Out);
     I++;
+    string Input = Out.fileContents;
+    Options.MaxNumberOfRuns = Out.mutRep;
     Printf("#%zd ORACLE (%s)", I, Input.c_str());
+
     RunOneTestOracle(F, Input.c_str(), Options.MaxLen, Result);
+
+    // write to file @aakash TODO: delete created file
+    std::ofstream myfile;
+    std::string fileName= "temp1.txt";
+    myfile.open(fileName);
+    myfile << Input.c_str();
+    myfile.close();
+
+    auto CorporaFiles = ReadCorpora({}, {fileName});
+    Printf("aakash2: %d\n",CorporaFiles.size());
+    F->Loop(CorporaFiles);
     // Sock->write(Result);
     Sock->write(TPC.GetCoverageCounters());
-
-
-//        for (int i = 0; i < 10; ++i) {
-//
-//      // mutate buffer
-//      NewSize = MD.Mutate(CurrentUnitData, Size, CurrentMaxMutationLen);
-//
-//
-//      size_t CurrentMaxMutationLen =
-//          Min(MaxMutationLen, Max(U.size(), TmpMaxMutationLen));
-//      assert(CurrentMaxMutationLen > 0);
-//
-//      for (int i = 0; i < Options.MutateDepth; i++) {
-//        if (TotalNumberOfRuns >= Options.MaxNumberOfRuns)
-//          break;
-//        size_t NewSize = 0;
-//        if (II.HasFocusFunction && !II.DataFlowTraceForFocusFunction.empty() &&
-//            Size <= CurrentMaxMutationLen)
-//          NewSize = MD.MutateWithMask(CurrentUnitData, Size, Size,
-//                                      II.DataFlowTraceForFocusFunction);
-//
-//        // If MutateWithMask either failed or wasn't called, call default
-//        // Mutate.
-//        if (!NewSize)
-//          NewSize = MD.Mutate(CurrentUnitData, Size, CurrentMaxMutationLen);
-//        assert(NewSize > 0 && "Mutator returned empty unit");
-//        assert(NewSize <= CurrentMaxMutationLen &&
-//               "Mutator return oversized unit");
-//        Size = NewSize;
-//        II.NumExecutedMutations++;
-//        Corpus.IncrementNumExecutedMutations();
-//
-//        bool FoundUniqFeatures = false;
-//        bool NewCov = RunOne(CurrentUnitData, Size, /*MayDeleteFile=*/true, &II,
-//                             &FoundUniqFeatures);
-//        TryDetectingAMemoryLeak(CurrentUnitData, Size,
-//                                /*DuringInitialCorpusExecution*/ false);
-//        if (NewCov) {
-//          ReportNewCoverage(&II, {CurrentUnitData, CurrentUnitData + Size});
-//          break; // We will mutate this input more in the next rounds.
-//        }
-//        if (Options.ReduceDepth && !FoundUniqFeatures)
-//          break;
-//      }
-//    }
 
     exit(EXIT_SUCCESS);
   }

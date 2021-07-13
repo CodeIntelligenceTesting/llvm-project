@@ -7,14 +7,19 @@
 #include <string>
 
 using std::string;
-
+typedef struct{
+      int mutRep;
+      std::string fileContents;
+    } dataOut;
 class Socket {
 public:
+  
   Socket(const char *Path);
-  bool read(string &Out);
+  bool read(dataOut *Out);
   bool write(string Data);
   bool close();
   ~ Socket();
+  
 
 private:
   int Sockfd;

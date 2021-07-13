@@ -17,8 +17,8 @@ def client():
 
 
 @click.command()
-@click.option('--role', default='server', help='Server or client role?')
-@click.option('--addr', default='/tmp/test.sock', help='socket address')
+@click.option('--role', default='client', help='Server or client role?')
+@click.option('--addr', default='/tmp/libfuzzer.sock', help='socket address')
 def main(role='server', addr='/tmp/test.sock'):
     with socket(AF_UNIX, SOCK_STREAM) as sock:
         if role == 'server':
@@ -40,6 +40,7 @@ def main(role='server', addr='/tmp/test.sock'):
 
             inputs = client()
             for input_ in inputs:
+                sock.sendall(pack('I', 2))
                 sock.sendall(pack('I', len(input_)) + input_)
                 print('SENT>> ' + str(input_))
                 len_ = unpack('I', sock.recv(4))[0]
