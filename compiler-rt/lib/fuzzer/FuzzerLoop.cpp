@@ -163,7 +163,7 @@ Fuzzer::Fuzzer(UserCallback CB, InputCorpus &Corpus, MutationDispatcher &MD,
   memset(BaseSha1, 0, sizeof(BaseSha1));
 }
 
-Fuzzer::~Fuzzer() {}
+Fuzzer::~Fuzzer() { F = nullptr;}
 
 void Fuzzer::AllocateCurrentUnitData() {
   if (CurrentUnitData || MaxInputLen == 0)
@@ -755,7 +755,8 @@ void Fuzzer::PurgeAllocator() {
   LastAllocatorPurgeAttemptTime = system_clock::now();
 }
 
-void Fuzzer::ReadAndExecuteSeedCorpora(Vector<SizedFile> &CorporaFiles) {
+std::vector<std::string> Fuzzer::ReadAndExecuteSeedCorpora(Vector<SizedFile> &CorporaFiles) {
+  std::vector<std::string> coverageCounters;
   const size_t kMaxSaneLen = 1 << 20;
   const size_t kMinDefaultLen = 4096;
   size_t MaxSize = 0;
@@ -778,6 +779,7 @@ void Fuzzer::ReadAndExecuteSeedCorpora(Vector<SizedFile> &CorporaFiles) {
     Printf("INFO: A corpus is not provided, starting from an empty corpus\n");
     Unit U({'\n'}); // Valid ASCII input.
     RunOne(U.data(), U.size());
+    coverageCounters.push_back(TPC.GetCoverageCounters());
   } else {
     Printf("INFO: seed corpus: files: %zd min: %zdb max: %zdb total: %zdb"
            " rss: %zdMb\n",
@@ -795,6 +797,7 @@ void Fuzzer::ReadAndExecuteSeedCorpora(Vector<SizedFile> &CorporaFiles) {
       auto U = FileToVector(SF.File, MaxInputLen, /*ExitOnError=*/false);
       assert(U.size() <= MaxInputLen);
       RunOne(U.data(), U.size());
+      coverageCounters.push_back(TPC.GetCoverageCounters());
       CheckExitOnSrcPosOrItem();
       TryDetectingAMemoryLeak(U.data(), U.size(),
                               /*DuringInitialCorpusExecution*/ true);
@@ -816,14 +819,19 @@ void Fuzzer::ReadAndExecuteSeedCorpora(Vector<SizedFile> &CorporaFiles) {
            "Is the code instrumented for coverage? Exiting.\n");
     exit(1);
   }
+  
+  return coverageCounters;
 }
 
 std::vector<std::string> Fuzzer::Loop(Vector<SizedFile> &CorporaFiles) {
+  std::vector<std::string> allCoverages;
   auto FocusFunctionOrAuto = Options.FocusFunction;
   DFT.Init(Options.DataFlowTrace, &FocusFunctionOrAuto, CorporaFiles,
            MD.GetRand());
   TPC.SetFocusFunction(FocusFunctionOrAuto);
-  ReadAndExecuteSeedCorpora(CorporaFiles);
+  
+  auto InitialCoverages = ReadAndExecuteSeedCorpora(CorporaFiles);
+  std::copy(InitialCoverages.begin(), InitialCoverages.end(), std::back_inserter(allCoverages));
   DFT.Clear(); // No need for DFT any more.
   TPC.SetPrintNewPCs(Options.PrintNewCovPcs);
   TPC.SetPrintNewFuncs(Options.PrintNewCovFuncs);
@@ -831,7 +839,6 @@ std::vector<std::string> Fuzzer::Loop(Vector<SizedFile> &CorporaFiles) {
 
   TmpMaxMutationLen =
       Min(MaxMutationLen, Max(size_t(4), Corpus.MaxInputSize()));
-  std::vector<std::string> allCoverages;
   while (true) {
     auto Now = system_clock::now();
     if (!Options.StopFile.empty() &&

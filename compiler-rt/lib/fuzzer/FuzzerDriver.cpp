@@ -33,10 +33,8 @@
 #include <mutex>
 #include <string>
 #include <thread>
-// basic file operations @aakash
-#include <iostream>
+// basic file operations
 #include <fstream>
-
 // This function should be present in the libFuzzer so that the client
 // binary can test for its existence.
 #if LIBFUZZER_MSVC
@@ -821,36 +819,35 @@ int FuzzerDriver(int *argc, char ***argv, UserCallback Callback) {
     return CleanseCrashInput(Args, Options);
 
   if (Flags.oracle) {
-    Options.SaveArtifacts = false;
-    Printf("%s: Running inputs from /tmp/libfuzzer.sock\n", ProgName->c_str());
-    size_t I = 0;
-
-    Socket *Sock = new Socket("/tmp/libfuzzer.sock");
     string Result;
     string Input;
+    std::ofstream Myfile;
+    std::string FileName = std::tmpnam(nullptr);
+    Options.SaveArtifacts = false;
+
+    Printf("%s: Running inputs from /tmp/libfuzzer.sock\n", ProgName->c_str());
+    Socket *Sock = new Socket("/tmp/libfuzzer.sock");
+    // infinite reading from socket
     for (dataOut Out; Sock->read(&Out);) {
-      I++;
-      Input = Out.fileContents;
+      delete F;
+      // totalNumberofRuns gets incremented by ExecuteCallback 2 times, so need to add 2 here!
       Options.MaxNumberOfRuns = Out.mutRep + 2;
-      Printf("#%zd ORACLE (%s)", I, Input.c_str());
+      auto *F = new Fuzzer(Callback, *Corpus, *MD, Options);
+      Input = Out.fileContents;
+      Printf("#ORACLE (%s)", Input.c_str());
 
-      // write to file @aakash TODO: delete created file
-      std::ofstream myfile;
-      std::string fileName= "temp1.txt";
-      myfile.open(fileName);
-      myfile << Input.c_str();
-      myfile.close();
+      // write to file
+      Myfile.open(FileName);
+      Myfile << Input.c_str();
+      Myfile.close();
 
-      auto CorporaFiles = ReadCorpora({}, {fileName});
-      Printf("aakash2: %d\n",CorporaFiles.size());
+      auto CorporaFiles = ReadCorpora({}, {FileName});
 
       std::vector<std::string> NewCoverages = F->Loop(CorporaFiles);
-      Printf("newCoverages: %d\n", NewCoverages.size());
-      // Sock->write(Result);
+      // Printf("newCoverages: %d\n", NewCoverages.size());
       Sock->write(NewCoverages);
     }
-    
-
+    std::remove(FileName.c_str());
     exit(EXIT_SUCCESS);
   }
 

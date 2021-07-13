@@ -36,7 +36,7 @@ public:
          FuzzingOptions Options);
   ~Fuzzer();
   std::vector<std::string> Loop(Vector<SizedFile> &CorporaFiles);
-  void ReadAndExecuteSeedCorpora(Vector<SizedFile> &CorporaFiles);
+  std::vector<std::string> ReadAndExecuteSeedCorpora(Vector<SizedFile> &CorporaFiles);
   void MinimizeCrashLoop(const Unit &U);
   void RereadOutputCorpus(size_t MaxSize);
 
