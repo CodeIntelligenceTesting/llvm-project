@@ -61,3 +61,9 @@ autoconf/autom4te.cache
 /clang/utils/analyzer/projects/*/PatchedSource
 /clang/utils/analyzer/projects/*/ScanBuildResults
 /clang/utils/analyzer/projects/*/RefScanBuildResults
+compiler-rt/lib/fuzzer/**/crash*
+compiler-rt/lib/fuzzer/temp1.txt
+compiler-rt/lib/fuzzer/debugging/libFuzzer.a
+compiler-rt/lib/fuzzer/debugging/target
+compiler-rt/lib/fuzzer/debugging/target.o
+compiler-rt/lib/fuzzer/debugging/temp1.txt

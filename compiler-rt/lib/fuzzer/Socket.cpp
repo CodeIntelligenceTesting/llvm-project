@@ -3,6 +3,7 @@
 //
 
 #include "Socket.h"
+#include <cstddef>
 #include <cstdlib>
 #include <iostream>
 #include <sys/socket.h>
@@ -53,44 +54,52 @@ Socket::Socket(const char *SockPath) {
   std::cout << "Client established connection";
 }
 
-bool Socket::read(string &Out) {
-  union {
-    unsigned int Integer;
-    unsigned char Byte[4];
-  } Len;
+bool Socket::read(dataOut *Out) {
+  int_asbytes Len;
+  int_asbytes MutRep;
+
+  // recieve number of mutation repititions
+  ::recv(Conn, MutRep.Byte, 4, 0);
+  Out->mutRep = MutRep.Integer;
+
   // recieve length of the upcomming msg
   ::recv(Conn, Len.Byte, 4, 0);
   if (Len.Integer == 0) {
     return false;
   }
-
   int N;
   char RetValue[Len.Integer];
+  // now reading file contents
   N = ::recv(Conn, RetValue, Len.Integer, 0);
   if (N < 0) {
     std::cout << "socket read failed" << std::endl;
     exit(EXIT_FAILURE);
   }
 
-  Out = RetValue;
+  Out->fileContents = RetValue;
   return true;
 }
 
-bool Socket::write(string Data) {
-  union {
-    unsigned int Integer;
-    unsigned char Byte[4];
-  } Len;
-
+bool Socket::write(std::vector<std::string> Data) {
+  int_asbytes Len;
   Len.Integer = Data.size();
   if (::write(Conn, Len.Byte, 4) == -1) {
     std::cout << "Error" << std::endl;
     exit(EXIT_FAILURE);
   }
-  if (::write(Conn, Data.c_str(), Data.size()) == -1) {
-    std::cout << "Error" << std::endl;
-    exit(EXIT_FAILURE);
+  for(auto Data : Data){
+    Len.Integer = Data.size();
+    if (::write(Conn, Len.Byte, 4) == -1) {
+      std::cout << "Error" << std::endl;
+      exit(EXIT_FAILURE);
+    }
+
+    if (::write(Conn, Data.c_str(), Data.size()) == -1) {
+      std::cout << "Error" << std::endl;
+      exit(EXIT_FAILURE);
+    }
   }
+  
   return true;
 }
 
